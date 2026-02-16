@@ -1,0 +1,130 @@
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Обратная смета ГП — Банк vs ПТО</title>
+
+<style>
+:root{
+--bg:#0b1020;
+--card:#121a33;
+--text:#e9eeff;
+--muted:#9aa7c7;
+--ok:#22c55e;
+--warn:#fbbf24;
+--bad:#ef4444;
+--mono:ui-monospace,Consolas,monospace;
+--sans:system-ui,Segoe UI,Roboto;
+}
+body{margin:0;background:linear-gradient(120deg,#070a14,#0b1020);color:var(--text);font-family:var(--sans);}
+.wrap{max-width:1200px;margin:30px auto;padding:0 20px;}
+.card{background:rgba(18,26,51,.9);border-radius:14px;padding:18px;margin-bottom:18px}
+h1{font-size:20px}
+h2{font-size:14px;color:#cfe0ff;margin-bottom:10px}
+.row{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;margin-bottom:8px}
+label{font-size:12px;color:var(--muted)}
+input{width:100%;padding:8px;border-radius:8px;border:1px solid #334155;background:#0b1229;color:white}
+table{width:100%;border-collapse:collapse}
+td,th{padding:8px;border-bottom:1px solid #334155;text-align:right}
+th{text-align:left}
+.green{color:var(--ok)}
+.red{color:var(--bad)}
+.warn{color:var(--warn)}
+button{padding:10px 14px;border-radius:10px;border:none;background:#1e40af;color:white;cursor:pointer;margin-right:10px}
+</style>
+</head>
+
+<body>
+<div class="wrap" id="report">
+
+<h1>Обратный калькулятор сметы Генподрядчика</h1>
+
+<div class="card">
+<h2>1️⃣ Утверждено банком</h2>
+<div class="row"><label>Бюджет СМР (лимит)</label><input id="bank_budget" value="613842008"></div>
+<div class="row"><label>Накладные ГП (%)</label><input id="overhead" value="10"></div>
+<div class="row"><label>Прибыль ГП (%)</label><input id="profit_pct" value="6"></div>
+</div>
+
+<div class="card">
+<h2>2️⃣ Обратный расчет допустимых прямых</h2>
+<table>
+<tr><th>Допустимые прямые затраты</th><td id="direct"></td></tr>
+<tr><th>Накладные</th><td id="overhead_sum"></td></tr>
+<tr><th>Прибыль ГП</th><td id="gp_profit"></td></tr>
+<tr><th><b>Итого СМР</b></th><td id="total_smr"></td></tr>
+</table>
+</div>
+
+<div class="card">
+<h2>3️⃣ Факт сметы ПТО</h2>
+<div class="row"><label>Прямые по смете ПТО</label><input id="pto_direct" value="0"></div>
+<div class="row"><label>Накладные ПТО</label><input id="pto_overhead" value="0"></div>
+<div class="row"><label>Прибыль ПТО</label><input id="pto_profit" value="0"></div>
+
+<table>
+<tr><th>Итого смета ПТО</th><td id="pto_total"></td></tr>
+<tr><th>Отклонение от лимита</th><td id="deviation"></td></tr>
+</table>
+</div>
+
+<div class="card">
+<h2>4️⃣ Управленческий вывод</h2>
+<div id="conclusion"></div>
+</div>
+
+<button onclick="calculate()">Пересчитать</button>
+<button onclick="generateTZ()">Сформировать ТЗ для ПТО (PDF)</button>
+
+</div>
+
+<script>
+function n(id){return parseFloat(document.getElementById(id).value.replace(/\s/g,''))||0}
+function f(x){return Math.round(x).toLocaleString("ru-RU")+" ₽"}
+
+function calculate(){
+
+let B=n("bank_budget")
+let o=n("overhead")/100
+let p=n("profit_pct")/100
+
+let direct=B/(1+o+p*(1+o))
+let overhead_sum=direct*o
+let gp_profit=(direct+overhead_sum)*p
+let total=direct+overhead_sum+gp_profit
+
+document.getElementById("direct").innerHTML=f(direct)
+document.getElementById("overhead_sum").innerHTML=f(overhead_sum)
+document.getElementById("gp_profit").innerHTML=f(gp_profit)
+document.getElementById("total_smr").innerHTML=f(total)
+
+let pto_total=n("pto_direct")+n("pto_overhead")+n("pto_profit")
+document.getElementById("pto_total").innerHTML=f(pto_total)
+
+let deviation=pto_total-B
+let devEl=document.getElementById("deviation")
+devEl.innerHTML=f(deviation)
+
+if(deviation>0){
+devEl.className="red"
+document.getElementById("conclusion").innerHTML="<span class='red'>Смета превышает лимит банка</span>"
+}else{
+devEl.className="green"
+document.getElementById("conclusion").innerHTML="<span class='green'>Смета в пределах лимита</span>"
+}
+
+}
+
+function generateTZ(){
+calculate()
+let content=document.getElementById("report").innerHTML
+let w=window.open("")
+w.document.write("<html><head><title>ТЗ ПТО</title></head><body>"+content+"</body></html>")
+w.document.close()
+w.print()
+}
+
+calculate()
+</script>
+</body>
+</html>
