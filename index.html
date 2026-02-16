@@ -2,7 +2,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Обратная смета ГП — Банк vs ПТО</title>
+<title>Обратная смета ГП — Банк vs ПТО PRO</title>
 
 <style>
 :root{
@@ -17,11 +17,11 @@
 --sans:system-ui,Segoe UI,Roboto;
 }
 body{margin:0;background:linear-gradient(120deg,#070a14,#0b1020);color:var(--text);font-family:var(--sans);}
-.wrap{max-width:1200px;margin:30px auto;padding:0 20px;}
+.wrap{max-width:1300px;margin:30px auto;padding:0 20px;}
 .card{background:rgba(18,26,51,.9);border-radius:14px;padding:18px;margin-bottom:18px}
 h1{font-size:20px}
 h2{font-size:14px;color:#cfe0ff;margin-bottom:10px}
-.row{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;margin-bottom:8px}
+.row{display:grid;grid-template-columns:1.6fr 1fr;gap:10px;margin-bottom:8px}
 label{font-size:12px;color:var(--muted)}
 input{width:100%;padding:8px;border-radius:8px;border:1px solid #334155;background:#0b1229;color:white}
 table{width:100%;border-collapse:collapse}
@@ -37,34 +37,42 @@ button{padding:10px 14px;border-radius:10px;border:none;background:#1e40af;color
 <body>
 <div class="wrap" id="report">
 
-<h1>Обратный калькулятор сметы Генподрядчика</h1>
+<h1>Обратный калькулятор сметы Генподрядчика (с главами банка)</h1>
 
 <div class="card">
-<h2>1️⃣ Утверждено банком</h2>
-<div class="row"><label>Бюджет СМР (лимит)</label><input id="bank_budget" value="613842008"></div>
+<h2>1️⃣ Утвержденный бюджет банка</h2>
+
+<div class="row"><label>Глава 2. СМР (общий лимит)</label><input id="bank_smr" value="613842008"></div>
+
+<h3 style="color:#9aa7c7">Прямые платежи поставщикам (вне ГП)</h3>
+<div class="row"><label>Лифты</label><input id="lift_direct" value="0"></div>
+<div class="row"><label>Технические условия</label><input id="tu_direct" value="0"></div>
+<div class="row"><label>Оборудование (прочее)</label><input id="equip_direct" value="0"></div>
+
 <div class="row"><label>Накладные ГП (%)</label><input id="overhead" value="10"></div>
 <div class="row"><label>Прибыль ГП (%)</label><input id="profit_pct" value="6"></div>
 </div>
 
 <div class="card">
-<h2>2️⃣ Обратный расчет допустимых прямых</h2>
+<h2>2️⃣ Расчет допустимого лимита ГП</h2>
 <table>
-<tr><th>Допустимые прямые затраты</th><td id="direct"></td></tr>
+<tr><th>СМР через ГП (после исключения прямых оплат)</th><td id="gp_limit"></td></tr>
+<tr><th>Допустимые прямые работы</th><td id="direct"></td></tr>
 <tr><th>Накладные</th><td id="overhead_sum"></td></tr>
 <tr><th>Прибыль ГП</th><td id="gp_profit"></td></tr>
-<tr><th><b>Итого СМР</b></th><td id="total_smr"></td></tr>
+<tr><th><b>Итого договор ГП</b></th><td id="total_gp"></td></tr>
 </table>
 </div>
 
 <div class="card">
 <h2>3️⃣ Факт сметы ПТО</h2>
-<div class="row"><label>Прямые по смете ПТО</label><input id="pto_direct" value="0"></div>
+<div class="row"><label>Прямые ПТО</label><input id="pto_direct" value="0"></div>
 <div class="row"><label>Накладные ПТО</label><input id="pto_overhead" value="0"></div>
 <div class="row"><label>Прибыль ПТО</label><input id="pto_profit" value="0"></div>
 
 <table>
-<tr><th>Итого смета ПТО</th><td id="pto_total"></td></tr>
-<tr><th>Отклонение от лимита</th><td id="deviation"></td></tr>
+<tr><th>Итого договор ПТО</th><td id="pto_total"></td></tr>
+<tr><th>Отклонение от лимита ГП</th><td id="deviation"></td></tr>
 </table>
 </div>
 
@@ -84,33 +92,39 @@ function f(x){return Math.round(x).toLocaleString("ru-RU")+" ₽"}
 
 function calculate(){
 
-let B=n("bank_budget")
+let bank_smr=n("bank_smr")
+
+let direct_payments=n("lift_direct")+n("tu_direct")+n("equip_direct")
+
+let gp_limit=bank_smr-direct_payments
+
 let o=n("overhead")/100
 let p=n("profit_pct")/100
 
-let direct=B/(1+o+p*(1+o))
+let direct=gp_limit/(1+o+p*(1+o))
 let overhead_sum=direct*o
 let gp_profit=(direct+overhead_sum)*p
-let total=direct+overhead_sum+gp_profit
+let total_gp=direct+overhead_sum+gp_profit
 
+document.getElementById("gp_limit").innerHTML=f(gp_limit)
 document.getElementById("direct").innerHTML=f(direct)
 document.getElementById("overhead_sum").innerHTML=f(overhead_sum)
 document.getElementById("gp_profit").innerHTML=f(gp_profit)
-document.getElementById("total_smr").innerHTML=f(total)
+document.getElementById("total_gp").innerHTML=f(total_gp)
 
 let pto_total=n("pto_direct")+n("pto_overhead")+n("pto_profit")
 document.getElementById("pto_total").innerHTML=f(pto_total)
 
-let deviation=pto_total-B
+let deviation=pto_total-gp_limit
 let devEl=document.getElementById("deviation")
 devEl.innerHTML=f(deviation)
 
 if(deviation>0){
 devEl.className="red"
-document.getElementById("conclusion").innerHTML="<span class='red'>Смета превышает лимит банка</span>"
+document.getElementById("conclusion").innerHTML="<span class='red'>Смета превышает допустимый лимит ГП</span>"
 }else{
 devEl.className="green"
-document.getElementById("conclusion").innerHTML="<span class='green'>Смета в пределах лимита</span>"
+document.getElementById("conclusion").innerHTML="<span class='green'>Смета укладывается в лимит</span>"
 }
 
 }
